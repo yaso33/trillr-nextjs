@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="buzlyMain" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A855F7"/>
+      <stop offset="50%" style="stop-color:#8B5CF6"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="buzlyAccent" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F59E0B"/>
+      <stop offset="100%" style="stop-color:#FBBF24"/>
+    </linearGradient>
+    <linearGradient id="buzlyWing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C4B5FD" stop-opacity="0.9"/>
+      <stop offset="100%" style="stop-color:#A78BFA" stop-opacity="0.7"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <circle cx="100" cy="100" r="85" fill="url(#buzlyMain)" filter="url(#glow)"/>
+  
+  <ellipse cx="65" cy="75" rx="25" ry="35" fill="url(#buzlyWing)" transform="rotate(-25 65 75)"/>
+  <ellipse cx="135" cy="75" rx="25" ry="35" fill="url(#buzlyWing)" transform="rotate(25 135 75)"/>
+  
+  <ellipse cx="100" cy="110" rx="45" ry="55" fill="url(#buzlyAccent)"/>
+  
+  <rect x="90" y="65" width="20" height="45" rx="10" fill="url(#buzlyAccent)"/>
+  
+  <line x1="85" y1="95" x2="115" y2="95" stroke="#1F1F1F" stroke-width="3" stroke-linecap="round"/>
+  <line x1="80" y1="115" x2="120" y2="115" stroke="#1F1F1F" stroke-width="3" stroke-linecap="round"/>
+  <line x1="85" y1="135" x2="115" y2="135" stroke="#1F1F1F" stroke-width="3" stroke-linecap="round"/>
+  
+  <circle cx="85" cy="75" r="8" fill="#1F1F1F"/>
+  <circle cx="115" cy="75" r="8" fill="#1F1F1F"/>
+  <circle cx="87" cy="73" r="3" fill="white"/>
+  <circle cx="117" cy="73" r="3" fill="white"/>
+  
+  <ellipse cx="75" cy="95" rx="12" ry="8" fill="#FDA4AF" opacity="0.5"/>
+  <ellipse cx="125" cy="95" rx="12" ry="8" fill="#FDA4AF" opacity="0.5"/>
+  
+  <path d="M92 85 Q100 95, 108 85" stroke="#1F1F1F" stroke-width="3" stroke-linecap="round" fill="none"/>
+  
+  <line x1="70" y1="50" x2="65" y2="35" stroke="#1F1F1F" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="63" cy="32" r="5" fill="url(#buzlyMain)"/>
+  <line x1="130" y1="50" x2="135" y2="35" stroke="#1F1F1F" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="137" cy="32" r="5" fill="url(#buzlyMain)"/>
+  
+  <circle cx="155" cy="60" r="8" fill="url(#buzlyMain)" opacity="0.6"/>
+  <circle cx="170" cy="80" r="5" fill="url(#buzlyMain)" opacity="0.4"/>
+  <circle cx="45" cy="65" r="6" fill="url(#buzlyMain)" opacity="0.5"/>
+</svg>
