@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { storage } from '../../../../server/storage'
+import { storage } from '@server/storage'
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     }
     const message = await storage.sendChannelMessage(channelId, senderId, content)
     try {
-      const { pusher } = await import('../../../../server/pusher')
+      const { pusher } = await import('@server/pusher')
       const channel = `community-${communityId || 'unknown'}-channel-${channelId}`
       await pusher.trigger(channel, 'new-channel-message', { message })
     } catch (err) {

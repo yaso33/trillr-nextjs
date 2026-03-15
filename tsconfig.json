@@ -4,6 +4,8 @@
     "client/src/**/*",
     "shared/**/*",
     "server/**/*",
+    "lib/**/*",
+    "middleware.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
@@ -41,6 +43,12 @@
       ],
       "@shared/*": [
         "./shared/*"
+      ],
+      "@server/*": [
+        "./server/*"
+      ],
+      "@lib/*": [
+        "./lib/*"
       ]
     },
     "allowJs": true,

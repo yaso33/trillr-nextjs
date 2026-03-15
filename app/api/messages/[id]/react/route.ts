@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { storage } from '../../../../../server/storage'
+import { storage } from '@server/storage'
 
 export async function POST(
   req: NextRequest,
@@ -12,7 +12,7 @@ export async function POST(
     }
     const result = await storage.toggleMessageReaction(params.id, userId, reaction)
     try {
-      const { pusher } = await import('../../../../../server/pusher')
+      const { pusher } = await import('@server/pusher')
       const channel = `conversation-${params.id}`
       await pusher.trigger(channel, 'message-reaction', {
         messageId: params.id, userId, reaction,

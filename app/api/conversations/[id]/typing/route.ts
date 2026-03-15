@@ -10,7 +10,7 @@ export async function POST(
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
     }
     try {
-      const { pusher } = await import('../../../../server/pusher')
+      const { pusher } = await import('@server/pusher')
       const channel = `conversation-${params.id}`
       await pusher.trigger(channel, 'typing', { userId })
     } catch (err) {

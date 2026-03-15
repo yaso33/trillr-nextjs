@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { storage } from '../../../../../../server/storage'
+import { storage } from '@server/storage'
 
 export async function POST(
   req: NextRequest,
@@ -12,7 +12,7 @@ export async function POST(
     }
     const session = await storage.createLiveSession(params.channelId, hostId, title)
     try {
-      const { pusher } = await import('../../../../../../server/pusher')
+      const { pusher } = await import('@server/pusher')
       const channel = `community-${params.id}-channel-${params.channelId}`
       await pusher.trigger(channel, 'live-start', { session })
     } catch (err) {

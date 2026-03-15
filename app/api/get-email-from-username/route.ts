@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getEmailFromUsername } from '../../../server/api'
+import { getEmailFromUsername } from '@server/api'
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { storage } from '../../../server/storage'
+import { storage } from '@server/storage'
 
 export async function GET(req: NextRequest) {
   try {
