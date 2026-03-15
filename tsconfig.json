@@ -49,6 +49,9 @@
       ],
       "@lib/*": [
         "./lib/*"
+      ],
+      "@actions/*": [
+        "./app/actions/*"
       ]
     },
     "allowJs": true,

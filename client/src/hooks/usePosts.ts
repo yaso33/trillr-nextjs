@@ -5,9 +5,15 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useToast } from './use-toast'
 import { useAuthenticatedMutation } from './useAuthenticatedMutation'
 
-const POSTS_PER_PAGE = 10
+// Server Actions — run on the server, no extra fetch() needed
+import {
+  createPost as createPostAction,
+  toggleLike as toggleLikeAction,
+  toggleSave as toggleSaveAction,
+  deletePost as deletePostAction,
+} from '@actions/posts'
 
-// ... (Keep the Post interface as is)
+const POSTS_PER_PAGE = 10
 
 export function usePosts() {
   const { user } = useAuth()
@@ -64,29 +70,23 @@ export function usePosts() {
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < POSTS_PER_PAGE) {
-        return undefined
-      }
+      if (lastPage.length < POSTS_PER_PAGE) return undefined
       return allPages.length
     },
   })
 }
 
+/**
+ * useCreatePost — uses Server Action instead of direct Supabase call.
+ * The post is created on the server with admin privileges.
+ */
 export function useCreatePost() {
   const { toast } = useToast()
 
   return useAuthenticatedMutation(
     async ({ content, image_url }, user) => {
-      const { data, error } = await supabase
-        .from('posts')
-        .insert([{ user_id: user.id, content, image_url }])
-        .select(`
-            *,
-            profiles:user_id (username, full_name, avatar_url)
-          `)
-        .single()
-
-      if (error) throw new Error(`Failed to create post: ${error.message}`)
+      const { data, error } = await createPostAction(user.id, content, image_url)
+      if (error) throw new Error(error)
       return data
     },
     {
@@ -96,49 +96,28 @@ export function useCreatePost() {
           description: 'Your post has been published successfully.',
         })
       },
-      onError: (error) => {
-        // The generic error toast is already handled, this is for specific actions
-      },
     }
   )
 }
 
+/**
+ * useLikePost — uses Server Action.
+ */
 export function useLikePost() {
   return useAuthenticatedMutation(async ({ postId, isLiked }, user) => {
-    if (isLiked) {
-      const { error } = await supabase
-        .from('likes')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-
-      if (error) throw new Error(`Failed to unlike post: ${error.message}`)
-    } else {
-      const { error } = await supabase.from('likes').insert([{ post_id: postId, user_id: user.id }])
-
-      if (error) throw new Error(`Failed to like post: ${error.message}`)
-    }
+    const { error } = await toggleLikeAction(postId, user.id, isLiked)
+    if (error) throw new Error(error)
   })
 }
 
+/**
+ * useSavePost — uses Server Action.
+ */
 export function useSavePost() {
   return useAuthenticatedMutation(
     async ({ postId, isSaved }, user) => {
-      if (isSaved) {
-        const { error } = await supabase
-          .from('saves')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-
-        if (error) throw new Error(`Failed to unsave post: ${error.message}`)
-      } else {
-        const { error } = await supabase
-          .from('saves')
-          .insert([{ post_id: postId, user_id: user.id }])
-
-        if (error) throw new Error(`Failed to save post: ${error.message}`)
-      }
+      const { error } = await toggleSaveAction(postId, user.id, isSaved)
+      if (error) throw new Error(error)
     },
     {
       onSuccess: () => {
@@ -148,18 +127,16 @@ export function useSavePost() {
   )
 }
 
+/**
+ * useDeletePost — uses Server Action.
+ */
 export function useDeletePost() {
   const { toast } = useToast()
 
   return useAuthenticatedMutation(
     async ({ postId, imageUrl }, user) => {
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', postId)
-        .eq('user_id', user.id)
-
-      if (error) throw new Error(`Failed to delete post: ${error.message}`)
+      const { error } = await deletePostAction(postId, user.id)
+      if (error) throw new Error(error)
 
       if (imageUrl?.includes('supabase')) {
         try {
@@ -167,7 +144,6 @@ export function useDeletePost() {
           await deleteMedia(imageUrl)
         } catch (storageError) {
           logger.error('Failed to delete media from storage:', storageError)
-          // Do not rethrow, as the post itself was deleted
         }
       }
     },
@@ -231,15 +207,11 @@ export function usePostLikes(postId: string) {
   })
 }
 
-// Deprecated: Use useLikePost instead. Kept for backwards compatibility.
 export function usePostReactions(postId: string) {
-  // Fallback to likes since post_reactions table doesn't exist in schema
   return usePostLikes(postId)
 }
 
-// Deprecated: Use useLikePost instead. Kept for backwards compatibility.
 export function useTogglePostReaction() {
-  // Fallback to useLikePost
   return useLikePost()
 }
 
@@ -253,8 +225,8 @@ export function useSavedPosts() {
       const { data, error } = await supabase
         .from('saves')
         .select(`
-                    posts:post_id (*, profiles:user_id(username, full_name, avatar_url))
-                `)
+          posts:post_id (*, profiles:user_id(username, full_name, avatar_url))
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 

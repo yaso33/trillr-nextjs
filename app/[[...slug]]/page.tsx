@@ -1,16 +1,18 @@
 'use client'
 
+import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
+import Loading from '../loading'
 
 const ClientApp = dynamic(() => import('../../client/src/ClientApp'), {
   ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-screen bg-[#1A1D21]">
-      <div className="text-2xl text-white">Loading...</div>
-    </div>
-  ),
+  loading: () => <Loading />,
 })
 
 export default function Page() {
-  return <ClientApp />
+  return (
+    <Suspense fallback={<Loading />}>
+      <ClientApp />
+    </Suspense>
+  )
 }
