@@ -1,7 +1,26 @@
 import type { Metadata, Viewport } from 'next'
+import { Cairo, Tajawal } from 'next/font/google'
 import { Suspense } from 'react'
 import './globals.css'
 import Loading from './loading'
+
+// ─── Font Optimization ────────────────────────────────────────────────────────
+// Fonts are self-hosted by Next.js — no external Google Fonts request at runtime
+const cairo = Cairo({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '600', '700', '900'],
+  variable: '--font-display',
+  display: 'swap',
+  preload: true,
+})
+
+const tajawal = Tajawal({
+  subsets: ['arabic', 'latin'],
+  weight: ['200', '300', '400', '500', '700', '800', '900'],
+  variable: '--font-sans',
+  display: 'swap',
+  preload: true,
+})
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://trillr.app'
 

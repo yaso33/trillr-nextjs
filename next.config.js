@@ -3,8 +3,10 @@ const nextConfig = {
   allowedDevOrigins: [
     '*.replit.dev',
     '*.picard.replit.dev',
+    '*.janeway.replit.dev',
     '*.repl.co',
     '*.replit.app',
+    'localhost:5000',
   ],
 
   images: {
