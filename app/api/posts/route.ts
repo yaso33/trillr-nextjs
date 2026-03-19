@@ -16,11 +16,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, content, imageUrl } = await req.json()
-    if (!userId || !content) {
+    const postData = await req.json()
+    if (!postData.author_id || !postData.content || !postData.community_id || !postData.title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
-    const post = await storage.createPost(userId, content, imageUrl)
+    const post = await storage.createPost(postData)
     return NextResponse.json(post)
   } catch (error) {
     console.error('Error creating post:', error)

@@ -5,7 +5,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useToast } from './use-toast'
 import { useAuthenticatedMutation } from './useAuthenticatedMutation'
 
-// Server Actions — run on the server, no extra fetch() needed
+// Server Actions are assumed to be correct and are not modified here.
 import {
   createPost as createPostAction,
   toggleLike as toggleLikeAction,
@@ -15,58 +15,72 @@ import {
 
 const POSTS_PER_PAGE = 10
 
+// NOTE: The interface needs a matching 'author' property for the query to work.
+export interface Post {
+    id: string;
+    author_id: string;
+    content: string;
+    image_url?: string;
+    created_at: string;
+    author: {
+        username: string;
+        name: string | null;
+        avatar_url: string | null;
+    };
+    is_liked?: boolean;
+    is_saved?: boolean;
+}
+
 export function usePosts() {
   const { user } = useAuth()
 
-  return useInfiniteQuery({
+  return useInfiniteQuery<Post[]>({ // Type assertion
     queryKey: ['posts'],
     queryFn: async ({ pageParam = 0 }) => {
       const from = pageParam * POSTS_PER_PAGE
       const to = from + POSTS_PER_PAGE - 1
 
+      // CORRECTED: Query 'users' via 'author_id' and select 'name'
       const { data: posts, error } = await supabase
         .from('posts')
         .select(`
           *,
-          profiles:user_id (username, full_name, avatar_url)
+          author:author_id (username, name, avatar_url)
         `)
         .order('created_at', { ascending: false })
         .range(from, to)
 
       if (error) {
-        if (error.message?.includes('does not exist')) {
-          logger.log('Posts table does not exist, returning empty array.')
-          return []
-        }
+        logger.error("Error fetching posts:", error);
         throw error
       }
 
       if (!user || posts.length === 0) {
-        return posts || []
+        return (posts as any[]) || []
       }
 
       const postIds = posts.map((p) => p.id)
 
-      const { data: likes } = await supabase
-        .from('likes')
-        .select('post_id')
-        .eq('user_id', user.id)
-        .in('post_id', postIds)
+      // These tables ('post_likes', 'post_saves') might not exist yet.
+      // Added try/catch to prevent fatal errors.
+      let likedPostIds = new Set<string>();
+      let savedPostIds = new Set<string>();
 
-      const { data: saves } = await supabase
-        .from('saves')
-        .select('post_id')
-        .eq('user_id', user.id)
-        .in('post_id', postIds)
+      try {
+          const { data: likes } = await supabase.from('post_likes').select('post_id').eq('user_id', user.id).in('post_id', postIds);
+          likedPostIds = new Set(likes?.map((l) => l.post_id) || []);
+      } catch (e) { logger.warn('Could not fetch post likes.') }
 
-      const likedPostIds = new Set(likes?.map((l) => l.post_id) || [])
-      const savedPostIds = new Set(saves?.map((s) => s.post_id) || [])
+      try {
+          const { data: saves } = await supabase.from('post_saves').select('post_id').eq('user_id', user.id).in('post_id', postIds);
+          savedPostIds = new Set(saves?.map((s) => s.post_id) || []);
+      } catch(e) { logger.warn('Could not fetch post saves.') }
 
       return posts.map((post) => ({
         ...post,
         is_liked: likedPostIds.has(post.id),
         is_saved: savedPostIds.has(post.id),
-      }))
+      })) as Post[]
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
@@ -76,12 +90,9 @@ export function usePosts() {
   })
 }
 
-/**
- * useCreatePost — uses Server Action instead of direct Supabase call.
- * The post is created on the server with admin privileges.
- */
 export function useCreatePost() {
   const { toast } = useToast()
+  const queryClient = useQueryClient();
 
   return useAuthenticatedMutation(
     async ({ content, image_url }, user) => {
@@ -91,47 +102,41 @@ export function useCreatePost() {
     },
     {
       onSuccess: () => {
-        toast({
-          title: 'Post created!',
-          description: 'Your post has been published successfully.',
-        })
+        toast({ title: 'Post created!', description: 'Your post has been published.' });
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
       },
     }
   )
 }
 
-/**
- * useLikePost — uses Server Action.
- */
 export function useLikePost() {
-  return useAuthenticatedMutation(async ({ postId, isLiked }, user) => {
-    const { error } = await toggleLikeAction(postId, user.id, isLiked)
-    if (error) throw new Error(error)
-  })
+    const queryClient = useQueryClient();
+    return useAuthenticatedMutation(async ({ postId, isLiked }, user) => {
+        const { error } = await toggleLikeAction(postId, user.id, isLiked)
+        if (error) throw new Error(error)
+    }, {
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['posts'] });
+        }
+    })
 }
 
-/**
- * useSavePost — uses Server Action.
- */
 export function useSavePost() {
-  return useAuthenticatedMutation(
-    async ({ postId, isSaved }, user) => {
-      const { error } = await toggleSaveAction(postId, user.id, isSaved)
-      if (error) throw new Error(error)
-    },
-    {
-      onSuccess: () => {
-        /* Invalidation is handled by the hook */
-      },
-    }
-  )
+    const queryClient = useQueryClient();
+    return useAuthenticatedMutation(async ({ postId, isSaved }, user) => {
+        const { error } = await toggleSaveAction(postId, user.id, isSaved)
+        if (error) throw new Error(error)
+    }, {
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['posts'] });
+            queryClient.invalidateQueries({ queryKey: ['saved-posts'] });
+        }
+    })
 }
 
-/**
- * useDeletePost — uses Server Action.
- */
 export function useDeletePost() {
   const { toast } = useToast()
+  const queryClient = useQueryClient();
 
   return useAuthenticatedMutation(
     async ({ postId, imageUrl }, user) => {
@@ -149,10 +154,8 @@ export function useDeletePost() {
     },
     {
       onSuccess: () => {
-        toast({
-          title: 'Post deleted',
-          description: 'Your post has been removed.',
-        })
+        toast({ title: 'Post deleted', description: 'Your post has been removed.' })
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
       },
     }
   )
@@ -160,22 +163,26 @@ export function useDeletePost() {
 
 export function useUpdatePost() {
   const { toast } = useToast()
+  const queryClient = useQueryClient();
+
   return useAuthenticatedMutation(
     async ({ postId, content, image_url }, user) => {
+      // CORRECTED: Use author_id, query users, and select name
       const { data, error } = await supabase
         .from('posts')
         .update({ content, image_url })
         .eq('id', postId)
-        .eq('user_id', user.id)
-        .select('*, profiles:user_id (username, full_name, avatar_url)')
+        .eq('author_id', user.id) // Corrected from user_id
+        .select('*, author:author_id (username, name, avatar_url)')
         .single()
 
       if (error) throw new Error(`Failed to update post: ${error.message}`)
       return data
     },
     {
-      onSuccess: () => {
-        toast({ title: 'Post updated', description: 'Your post has been updated successfully.' })
+      onSuccess: (data) => {
+        toast({ title: 'Post updated', description: 'Your post has been updated.' })
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
       },
     }
   )
@@ -187,14 +194,10 @@ export function usePostLikes(postId: string) {
     queryFn: async () => {
       if (!postId) return []
 
-      if (!supabase) {
-        logger.warn('Supabase not configured - returning empty likes')
-        return []
-      }
-
+      // CORRECTED: Query 'post_likes' and join with 'users'
       const { data, error } = await supabase
-        .from('likes')
-        .select('user_id, profiles:user_id (username)')
+        .from('post_likes')
+        .select('user_id, user:user_id (username, name, avatar_url)')
         .eq('post_id', postId)
 
       if (error) {
@@ -207,25 +210,18 @@ export function usePostLikes(postId: string) {
   })
 }
 
-export function usePostReactions(postId: string) {
-  return usePostLikes(postId)
-}
-
-export function useTogglePostReaction() {
-  return useLikePost()
-}
-
 export function useSavedPosts() {
   const { user } = useAuth()
-  return useQuery({
+  return useQuery<Post[]>({ // Type assertion
     queryKey: ['saved-posts', user?.id],
     queryFn: async () => {
       if (!user) return []
 
+      // CORRECTED: Query 'post_saves' and join with 'posts' and then 'users'
       const { data, error } = await supabase
-        .from('saves')
+        .from('post_saves')
         .select(`
-          posts:post_id (*, profiles:user_id(username, full_name, avatar_url))
+          post:posts (*, author:author_id(username, name, avatar_url))
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -235,7 +231,7 @@ export function useSavedPosts() {
         throw error
       }
 
-      return data?.map((item) => item.posts) || []
+      return data?.map((item: any) => item.post).filter(Boolean) || []
     },
     enabled: !!user,
   })

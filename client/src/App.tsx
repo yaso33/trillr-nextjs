@@ -47,7 +47,6 @@ function Router() {
   const [location] = useLocation()
 
   const publicPaths = [
-    '/',
     '/auth',
     '/forgot-password',
     '/verify-otp',

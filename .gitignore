@@ -9,7 +9,10 @@
 .env
 .env.*
 !/.env.example
-
+.next/
+node_modules/
+*.pack
+*.pack.gz
 # Log files
 npm-debug.log*
 yarn-debug.log*

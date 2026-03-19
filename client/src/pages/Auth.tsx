@@ -36,9 +36,15 @@ const AuthForm = () => {
         if (data.user?.identities?.length === 0) throw new Error('User already exists.')
         setSuccess('Check your email for the confirmation link!')
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        window.location.href = '/' // Redirect to home
+
+        // Redirect to edit profile if profile is not complete
+        if (data.user && !data.user.user_metadata.profile_completed) {
+          window.location.href = '/edit-profile'
+        } else {
+          window.location.href = '/'
+        }
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.')

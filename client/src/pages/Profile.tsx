@@ -114,15 +114,15 @@ export default function Profile() {
             <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6">
               <UserAvatar
                 src={profile.avatar_url}
-                name={profile.username}
+                name={profile.username || 'New User'}
                 size="2xl"
                 clickToView
                 className="shadow-[0_0_30px_theme(colors.primary)] sm:w-40 sm:h-40 w-32 h-32"
               />
               <div className="flex-1 text-center sm:text-left space-y-3">
                 <div className="flex items-center justify-center sm:justify-start gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold">@{profile.username}</h1>
-                  {isVerifiedUser(profile.username) && <VerifiedBadge />}
+                  <h1 className="text-2xl sm:text-3xl font-bold">@{profile.username || 'new_user'}</h1>
+                  {profile.username && isVerifiedUser(profile.username) && <VerifiedBadge />}
                 </div>
                 {profile.full_name && (
                   <p className="text-foreground/70 font-medium text-base">{profile.full_name}</p>
@@ -149,7 +149,7 @@ export default function Profile() {
             <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-6 pt-6 border-t border-white/10">
               <StatCard
                 icon={Grid3X3}
-                value={profile.posts_count}
+                value={profile.posts_count || 0}
                 label="Posts"
                 onClick={() => {
                   const postsButton = document.querySelector<HTMLButtonElement>('button[value="posts"]')
@@ -158,13 +158,13 @@ export default function Profile() {
               />
               <StatCard
                 icon={Users}
-                value={profile.followers_count}
+                value={profile.followers_count || 0}
                 label="Followers"
                 onClick={() => setShowFollowers(true)}
               />
               <StatCard
                 icon={Users}
-                value={profile.following_count}
+                value={profile.following_count || 0}
                 label="Following"
                 onClick={() => setShowFollowing(true)}
               />

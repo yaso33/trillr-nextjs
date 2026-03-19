@@ -4,9 +4,10 @@ import { supabase } from '@/lib/supabase'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from './use-toast'
 
+// Updated interface to match the 'users' table schema and the query alias
 export interface Video {
   id: string
-  user_id: string
+  author_id: string // The foreign key is author_id, not user_id
   title: string
   description: string | null
   video_url: string
@@ -15,9 +16,9 @@ export interface Video {
   comments_count: number
   views_count: number
   created_at: string
-  profiles: {
+  author: { // Changed from 'profiles' to 'author' for clarity
     username: string
-    full_name: string | null
+    name: string | null // Changed from 'full_name'
     avatar_url: string | null
   }
   is_liked?: boolean
@@ -26,36 +27,46 @@ export interface Video {
 export function useVideos() {
   const { user } = useAuth()
 
-  return useQuery({
+  return useQuery<Video[]>({ // Added type assertion
     queryKey: ['videos'],
     queryFn: async () => {
+      // Corrected the query to use the right foreign key (author_id) and table (users)
       const { data: videos, error } = await supabase
         .from('videos')
         .select(`
           *,
-          profiles:user_id (username, full_name, avatar_url)
+          author:author_id (username, name, avatar_url)
         `)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-
-      if (user) {
-        const { data: likes } = await supabase
-          .from('video_likes')
-          .select('video_id')
-          .eq('user_id', user.id)
-
-        const likedVideoIds = new Set(likes?.map((l) => l.video_id) || [])
-
-        return videos.map((video) => ({
-          ...video,
-          is_liked: likedVideoIds.has(video.id),
-        }))
+      if (error) {
+        logger.error('Error fetching videos:', error)
+        throw error
       }
 
-      return videos
+      if (user) {
+        try {
+          const { data: likes } = await supabase
+            .from('video_likes')
+            .select('video_id')
+            .eq('user_id', user.id)
+
+          const likedVideoIds = new Set(likes?.map((l) => l.video_id) || [])
+
+          return videos.map((video) => ({
+            ...video,
+            is_liked: likedVideoIds.has(video.id),
+          })) as Video[]
+        } catch (likeError) {
+            // If the video_likes table doesn't exist, this will fail.
+            // We'll log the error and return the videos without like information.
+            logger.warn('Could not fetch video likes. The table might be missing.', likeError)
+            return videos as Video[];
+        }
+      }
+
+      return videos as Video[]
     },
-    refetchInterval: 10000,
   })
 }
 
@@ -91,15 +102,34 @@ export function useLikeVideo() {
           : new Error('An unexpected error occurred while updating video like status')
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['videos'] })
+    onMutate: async (variables) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ['videos'] })
+      const previousVideos = queryClient.getQueryData<Video[]>(['videos'])
+
+      queryClient.setQueryData<Video[]>(['videos'], (old) =>
+        (old || []).map((video) =>
+          video.id === variables.videoId
+            ? { ...video, is_liked: !variables.isLiked }
+            : video
+        )
+      )
+
+      return { previousVideos }
     },
-    onError: (error: Error) => {
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousVideos) {
+        queryClient.setQueryData(['videos'], context.previousVideos)
+      }
       toast({
         title: 'Error',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos'] })
     },
   })
 }
